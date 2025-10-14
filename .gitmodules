@@ -1,0 +1,3 @@
+[submodule "invox"]
+	path = invox
+	url = git@github.com:sanonz/invox-setup.git
