@@ -20,7 +20,7 @@ echo.
 
 :: 1. 检查并构建 Uninstaller.exe
 if not exist "dist\Uninstaller.exe" (
-    echo [Step 1] Building Uninstaller.exe...
+    echo          Building Uninstaller.exe...
     if not exist "invox\Uninstaller\Res\resources.zip" (
         echo [Step 0] Creating resources.zip...
         cd /d "%ROOT_DIR%invox\Uninstaller\Res"
@@ -30,8 +30,6 @@ if not exist "dist\Uninstaller.exe" (
             exit /b 1
         )
         cd /d "%ROOT_DIR%"
-    ) else (
-        echo [Step 0] resources.zip already exists, skipping
     )
     cd /d "%ROOT_DIR%invox"
     msbuild InvoxSetup.sln /t:Uninstaller /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
@@ -77,7 +75,7 @@ if errorlevel 1 (
 :: 5. 构建 Installer.exe
 echo [Step 5] Building Installer.exe...
 if not exist "invox\Installer\Res\resources.zip" (
-    echo [Step 0] Creating resources.zip...
+    echo          Creating resources.zip...
     cd /d "%ROOT_DIR%invox\Installer\Res"
     7z a resources.zip images\* resources\* installer.xml
     if errorlevel 1 (
@@ -85,8 +83,6 @@ if not exist "invox\Installer\Res\resources.zip" (
         exit /b 1
     )
     cd /d "%ROOT_DIR%"
-) else (
-    echo [Step 0] resources.zip already exists, skipping
 )
 cd /d "%ROOT_DIR%invox"
 msbuild InvoxSetup.sln /t:Installer /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
