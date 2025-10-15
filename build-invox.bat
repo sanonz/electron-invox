@@ -14,8 +14,26 @@ for /f "tokens=2 delims=:, " %%a in ('findstr /r "\"version\"" package.json') do
 :: 移除引号
 set VERSION=%VERSION:"=%
 
+:: 解析版本号 (例如: 1.0.0 -> MAJOR=1, MINOR=0, BUILD=0)
+for /f "tokens=1,2,3 delims=." %%a in ("%VERSION%") do (
+    set VERSION_MAJOR=%%a
+    set VERSION_MINOR=%%b
+    set VERSION_BUILD=%%c
+)
+
 echo Building Invox Installer...
-echo Version: %VERSION%
+echo Version: %VERSION% (MAJOR=%VERSION_MAJOR%, MINOR=%VERSION_MINOR%, BUILD=%VERSION_BUILD%)
+echo.
+
+:: 更新 Config.h 中的版本号
+echo Updating Config.h with version %VERSION%...
+set CONFIG_FILE=invox\Common\Config.h
+if exist "%CONFIG_FILE%" (
+    powershell -Command "$content = Get-Content '%CONFIG_FILE%' -Raw -Encoding UTF8; $content = $content -replace '#define APP_VERSION_MAJOR\s+\d+', '#define APP_VERSION_MAJOR   %VERSION_MAJOR%'; $content = $content -replace '#define APP_VERSION_MINOR\s+\d+', '#define APP_VERSION_MINOR   %VERSION_MINOR%'; $content = $content -replace '#define APP_VERSION_BUILD\s+\d+', '#define APP_VERSION_BUILD   %VERSION_BUILD%'; [System.IO.File]::WriteAllText('%CD%\%CONFIG_FILE%', $content, [System.Text.UTF8Encoding]::new($true))"
+    echo Config.h updated successfully.
+) else (
+    echo Warning: Config.h not found at %CONFIG_FILE%
+)
 echo.
 
 :: 1. 检查并构建 Uninstaller.exe
