@@ -7,6 +7,25 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliar
 set ROOT_DIR=%~dp0
 cd /d "%ROOT_DIR%"
 
+:: 提取 electron-builder.yml 中的 appId 并生成 UUID
+echo Extracting appId from electron-builder.yml...
+for /f "tokens=2 delims=: " %%a in ('findstr /r "^appId:" electron-builder.yml') do (
+    set APP_ID=%%a
+)
+:: 移除可能的空格
+set APP_ID=%APP_ID: =%
+
+echo Found appId: %APP_ID%
+
+:: 运行 Node.js 脚本生成 UUID
+echo Generating UUID for registry keys...
+:: 对应的 ELECTRON_BUILDER_NS_UUID 为: https://github.com/electron-userland/electron-builder/blob/144c5ed2f9bdc9a811828a7be8f06658e1c28702/packages/app-builder-lib/src/targets/nsis/NsisTarget.ts#L45C46-L45C82
+for /f "delims=" %%a in ('node -e "const { UUID } = require('builder-util-runtime'); console.log(UUID.v5('%APP_ID%', UUID.parse('50e065bc-3134-11e6-9bab-38c9862bdaf3')));"') do (
+    set REGISTRY_UUID=%%a
+)
+
+echo Generated UUID: %REGISTRY_UUID%
+
 :: 读取 package.json 中的 version
 for /f "tokens=2 delims=:, " %%a in ('findstr /r "\"version\"" package.json') do (
     set VERSION=%%a
@@ -29,7 +48,7 @@ echo.
 echo Updating Config.h with version %VERSION%...
 set CONFIG_FILE=invox\Common\Config.h
 if exist "%CONFIG_FILE%" (
-    powershell -Command "$content = Get-Content '%CONFIG_FILE%' -Raw -Encoding UTF8; $content = $content -replace '#define APP_VERSION_MAJOR\s+\d+', '#define APP_VERSION_MAJOR   %VERSION_MAJOR%'; $content = $content -replace '#define APP_VERSION_MINOR\s+\d+', '#define APP_VERSION_MINOR   %VERSION_MINOR%'; $content = $content -replace '#define APP_VERSION_BUILD\s+\d+', '#define APP_VERSION_BUILD   %VERSION_BUILD%'; [System.IO.File]::WriteAllText('%CD%\%CONFIG_FILE%', $content, [System.Text.UTF8Encoding]::new($true))"
+    powershell -Command "$content = Get-Content '%CONFIG_FILE%' -Raw -Encoding UTF8; $content = $content -replace '#define APP_VERSION_MAJOR\s+\d+', '#define APP_VERSION_MAJOR   %VERSION_MAJOR%'; $content = $content -replace '#define APP_VERSION_MINOR\s+\d+', '#define APP_VERSION_MINOR   %VERSION_MINOR%'; $content = $content -replace '#define APP_VERSION_BUILD\s+\d+', '#define APP_VERSION_BUILD   %VERSION_BUILD%'; $content = $content -replace '#define APP_REGISTRY_KEYS\s+L\".+?\"', '#define APP_REGISTRY_KEYS  L\"%REGISTRY_UUID%\"'; [System.IO.File]::WriteAllText('%CD%\%CONFIG_FILE%', $content, [System.Text.UTF8Encoding]::new($true))"
     echo Config.h updated successfully.
 ) else (
     echo Warning: Config.h not found at %CONFIG_FILE%
@@ -122,7 +141,7 @@ if errorlevel 1 (
 echo.
 echo ==========================================
 echo Build completed successfully!
-echo Output: dist\Installer-%VERSION%.exe
+echo Output: dist\InvoxSetup-%VERSION%.exe
 echo ==========================================
 
 endlocal
