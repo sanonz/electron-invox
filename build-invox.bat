@@ -61,7 +61,7 @@ if not exist "dist\Uninstaller.exe" (
     if not exist "invox\Uninstaller\Res\resources.zip" (
         echo [Step 0] Creating resources.zip...
         cd /d "%ROOT_DIR%invox\Uninstaller\Res"
-        7z a resources.zip images\* resources\* uninstaller.xml
+        7z a resources.zip images\* resources\* *.xml
         if errorlevel 1 (
             echo Error: Failed to create resources.zip
             exit /b 1
@@ -114,7 +114,7 @@ echo [Step 5] Building Installer.exe...
 if not exist "invox\Installer\Res\resources.zip" (
     echo          Creating resources.zip...
     cd /d "%ROOT_DIR%invox\Installer\Res"
-    7z a resources.zip images\* resources\* installer.xml
+    7z a resources.zip images\* resources\* *.xml
     if errorlevel 1 (
         echo Error: Failed to create resources.zip
         exit /b 1
