@@ -55,35 +55,30 @@ if exist "%CONFIG_FILE%" (
 )
 echo.
 
-:: 1. 检查并构建 Uninstaller.exe
-if not exist "dist\Uninstaller.exe" (
-    echo          Building Uninstaller.exe...
-    if not exist "invox\Uninstaller\Res\resources.zip" (
-        echo [Step 0] Creating resources.zip...
-        cd /d "%ROOT_DIR%invox\Uninstaller\Res"
-        7z a resources.zip images\* resources\* *.xml
-        if errorlevel 1 (
-            echo Error: Failed to create resources.zip
-            exit /b 1
-        )
-        cd /d "%ROOT_DIR%"
-    )
-    cd /d "%ROOT_DIR%invox"
-    msbuild InvoxSetup.sln /t:Uninstaller /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+:: 1. 构建 Uninstaller.exe
+echo [Step 1] Building Uninstaller.exe...
+if not exist "invox\Uninstaller\Res\resources.zip" (
+    echo          Creating resources.zip...
+    cd /d "%ROOT_DIR%invox\Uninstaller\Res"
+    7z a resources.zip images\* resources\* *.xml
     if errorlevel 1 (
-        echo Error: Failed to build Uninstaller.exe
+        echo Error: Failed to create resources.zip
         exit /b 1
     )
     cd /d "%ROOT_DIR%"
-    copy /y "invox\bin\Uninstaller.exe" "dist\Uninstaller.exe"
-) else (
-    echo [Step 1] Uninstaller.exe already exists, skipping build
 )
+cd /d "%ROOT_DIR%invox"
+msbuild InvoxSetup.sln /t:Uninstaller /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
+if errorlevel 1 (
+    echo Error: Failed to build Uninstaller.exe
+    exit /b 1
+)
+cd /d "%ROOT_DIR%"
 
 :: 2. 复制 Uninstaller.exe 到 dist/win-unpacked
 echo [Step 2] Copying Uninstaller.exe to dist/win-unpacked...
 if not exist "dist\win-unpacked" mkdir "dist\win-unpacked"
-copy /y "dist\Uninstaller.exe" "dist\win-unpacked\Uninstaller.exe"
+copy /y "invox\bin\Uninstaller.exe" "dist\win-unpacked\Uninstaller.exe"
 if errorlevel 1 (
     echo Error: Failed to copy Uninstaller.exe
     exit /b 1
