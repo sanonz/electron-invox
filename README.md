@@ -22,8 +22,8 @@
 #### 安装 Visual Studio 2022 环境
 
 1. 下载安装工具：[Visual Studio Community](https://visualstudio.microsoft.com/zh-hans/thank-you-downloading-visual-studio/?sku=Community)
-2. 选择勾选：`使用 C++ 的桌面开发`、`C++ ATL for latest v143 build tools (x86 & x64)`
-3. 执行下载安装
+2. 选择安装：`Visual Studio Community 2022`，完成后点击修改按钮
+3. 勾选安装：`使用 C++ 的桌面开发`
 4. 安装完成检查 `msbuild` 命令是否存在，如果不存在把 `C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin` 加入到环境变量 `PATH` 中
 5. 下载安装 [7-Zip](https://www.7-zip.org/)，并把安装目录加入到环境变量 `PATH` 中，默认安装目录: `C:\Program Files\7-Zip`
 

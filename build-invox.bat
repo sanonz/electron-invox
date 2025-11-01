@@ -1,8 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-
 :: 获取项目根目录
 set ROOT_DIR=%~dp0
 cd /d "%ROOT_DIR%"
@@ -44,10 +42,21 @@ echo Building Invox Installer...
 echo Version: %VERSION% (MAJOR=%VERSION_MAJOR%, MINOR=%VERSION_MINOR%, BUILD=%VERSION_BUILD%)
 echo.
 
-:: 更新 Config.h 中的版本号
-echo Updating Config.h with version %VERSION%...
+:: 备份并更新 Config.h 中的版本号
 set CONFIG_FILE=invox\Common\Config.h
+set CONFIG_BACKUP=%CONFIG_FILE%.backup
+
 if exist "%CONFIG_FILE%" (
+    echo Backing up Config.h...
+    copy /y "%CONFIG_FILE%" "%CONFIG_BACKUP%" >nul
+    if errorlevel 1 (
+        echo Error: Failed to backup Config.h
+        call :restore_config
+        exit /b 1
+    )
+    echo Config.h backed up to %CONFIG_BACKUP%
+    
+    echo Updating Config.h with version %VERSION%...
     powershell -Command "$content = Get-Content '%CONFIG_FILE%' -Raw -Encoding UTF8; $content = $content -replace '#define APP_VERSION_MAJOR\s+\d+', '#define APP_VERSION_MAJOR   %VERSION_MAJOR%'; $content = $content -replace '#define APP_VERSION_MINOR\s+\d+', '#define APP_VERSION_MINOR   %VERSION_MINOR%'; $content = $content -replace '#define APP_VERSION_BUILD\s+\d+', '#define APP_VERSION_BUILD   %VERSION_BUILD%'; $content = $content -replace '#define APP_REGISTRY_KEYS\s+L\".+?\"', '#define APP_REGISTRY_KEYS  L\"%REGISTRY_UUID%\"'; [System.IO.File]::WriteAllText('%CD%\%CONFIG_FILE%', $content, [System.Text.UTF8Encoding]::new($true))"
     echo Config.h updated successfully.
 ) else (
@@ -55,22 +64,21 @@ if exist "%CONFIG_FILE%" (
 )
 echo.
 
-:: 1. 构建 Uninstaller.exe
+:: 1. 检查并构建 Uninstaller.exe
 echo [Step 1] Building Uninstaller.exe...
-if not exist "invox\Uninstaller\Res\resources.zip" (
-    echo          Creating resources.zip...
-    cd /d "%ROOT_DIR%invox\Uninstaller\Res"
-    7z a resources.zip images\* resources\* *.xml
-    if errorlevel 1 (
-        echo Error: Failed to create resources.zip
-        exit /b 1
-    )
-    cd /d "%ROOT_DIR%"
+cd /d "%ROOT_DIR%invox\Uninstaller\Res"
+if exist "resources.zip" del /f /q "resources.zip"
+7z a resources.zip images\* resources\* *.xml
+if errorlevel 1 (
+    echo Error: Failed to create resources.zip
+    call :restore_config
+    exit /b 1
 )
 cd /d "%ROOT_DIR%invox"
 msbuild InvoxSetup.sln /t:Uninstaller /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
 if errorlevel 1 (
     echo Error: Failed to build Uninstaller.exe
+    call :restore_config
     exit /b 1
 )
 cd /d "%ROOT_DIR%"
@@ -81,6 +89,7 @@ if not exist "dist\win-unpacked" mkdir "dist\win-unpacked"
 copy /y "invox\bin\Uninstaller.exe" "dist\win-unpacked\Uninstaller.exe"
 if errorlevel 1 (
     echo Error: Failed to copy Uninstaller.exe
+    call :restore_config
     exit /b 1
 )
 
@@ -91,6 +100,7 @@ if exist "app.7z" del /f /q "app.7z"
 7z a app.7z ".\win-unpacked\*" -t7z -m0=lzma2 -mx=7 -md=32m -mmt=on -ms=on
 if errorlevel 1 (
     echo Error: Failed to create app.7z
+    call :restore_config
     exit /b 1
 )
 cd /d "%ROOT_DIR%"
@@ -101,35 +111,36 @@ if not exist "invox\bin" mkdir "invox\bin"
 move /y "dist\app.7z" "invox\bin\app.7z"
 if errorlevel 1 (
     echo Error: Failed to move app.7z
+    call :restore_config
     exit /b 1
 )
 
 :: 5. 构建 Installer.exe
 echo [Step 5] Building Installer.exe...
-if not exist "invox\Installer\Res\resources.zip" (
-    echo          Creating resources.zip...
-    cd /d "%ROOT_DIR%invox\Installer\Res"
-    7z a resources.zip images\* resources\* *.xml
-    if errorlevel 1 (
-        echo Error: Failed to create resources.zip
-        exit /b 1
-    )
-    cd /d "%ROOT_DIR%"
+cd /d "%ROOT_DIR%invox\Installer\Res"
+if exist "resources.zip" del /f /q "resources.zip"
+7z a resources.zip images\* resources\* *.xml
+if errorlevel 1 (
+    echo Error: Failed to create resources.zip
+    call :restore_config
+    exit /b 1
 )
 cd /d "%ROOT_DIR%invox"
 msbuild InvoxSetup.sln /t:Installer /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
 if errorlevel 1 (
     echo Error: Failed to build Installer.exe
+    call :restore_config
     exit /b 1
 )
 cd /d "%ROOT_DIR%"
 
 :: 6. 复制 Installer.exe 到 dist 目录并重命名
-echo [Step 6] Copying Installer.exe to dist/Installer-%VERSION%.exe...
+echo [Step 6] Copying Installer.exe to dist/InvoxSetup-%VERSION%.exe...
 if not exist "dist" mkdir "dist"
 copy /y "invox\bin\Installer.exe" "dist\InvoxSetup-%VERSION%.exe"
 if errorlevel 1 (
     echo Error: Failed to copy Installer.exe
+    call :restore_config
     exit /b 1
 )
 
@@ -139,4 +150,26 @@ echo Build completed successfully!
 echo Output: dist\InvoxSetup-%VERSION%.exe
 echo ==========================================
 
+:: 还原 Config.h
+call :restore_config
+
 endlocal
+
+goto :eof
+
+:: 还原 Config.h 函数
+:restore_config
+if exist "%CONFIG_BACKUP%" (
+    echo Restoring Config.h from backup...
+    copy /y "%CONFIG_BACKUP%" "%CONFIG_FILE%" >nul
+    if errorlevel 1 (
+        echo Warning: Failed to restore Config.h from backup
+    ) else (
+        echo Config.h restored successfully
+    )
+    del /f /q "%CONFIG_BACKUP%" >nul
+    echo Backup file removed
+) else (
+    echo No Config.h backup found to restore
+)
+exit /b 0
